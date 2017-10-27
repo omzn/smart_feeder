@@ -118,13 +118,13 @@ String drumFeeder::nextFeedTime() {
   return ret;
 }
 
-int drumFeeder::schedule() {
+int drumFeeder::enable() {
   return _enable_schedule;
 }
 
 
 // スケジュールを有効(1)・無効(0)にする．
-void drumFeeder::schedule(int v) {
+void drumFeeder::enable(int v) {
   _enable_schedule = (v == 0 ? 0 : 1);
 }
 

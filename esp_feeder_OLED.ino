@@ -50,6 +50,8 @@ const uint8_t PROGMEM aq[2][128] = {{
   }
 };
 
+const String boolstr[2] = {"false", "true"};
+
 const String website_name  = "espfeeder";
 const char* apSSID         = "WIFI_FEED_TAN";
 String sitename;
@@ -252,7 +254,7 @@ boolean restoreConfig() {
 #endif
 
   int e_schedule  = EEPROM.read(EEPROM_SCHEDULE_ADDR) == 1 ? 1 : 0;
-  feeder.schedule(e_schedule == 0 ? 0 : 1);
+  feeder.enable(e_schedule == 0 ? 0 : 1);
 
   for (int i = 0; i < 3; i++) {
     int e_ft_h  = EEPROM.read(EEPROM_SCHEDULE_ADDR + i * 3 + 1);
@@ -459,9 +461,9 @@ void startWebServer_normal() {
   webServer.on("/pure.css", handleCss);
   webServer.on("/reboot", handleReboot);
   webServer.on("/feed", handleActionFeed);
-  webServer.on("/feedreset", handleActionFeedReset);
+  webServer.on("/reset", handleActionFeedReset);
   webServer.on("/status", handleStatus);
-  webServer.on("/schedule", handleSchedule);
+  webServer.on("/config", handleConfig);
   webServer.begin();
 }
 
@@ -521,7 +523,7 @@ void handleActionFeedReset() {
   webServer.send(200, "application/json", message);
 }
 
-void handleSchedule() {
+void handleConfig() {
   String message,argname,argv;
   int enable;
   int ft1_h = -1, ft1_m, ft1_r;
@@ -529,60 +531,62 @@ void handleSchedule() {
   int ft3_h = -1, ft3_m, ft3_r;
 
 #ifdef DEBUG
-  Serial.println("schedule command");
+  Serial.println("config command");
 #endif
   
   DynamicJsonBuffer jsonBuffer;
   JsonObject& json = jsonBuffer.createObject();
 
-  for (int i = 0; i < webServer.args(); i++) {
-    argname = webServer.argName(i);
-    argv = webServer.arg(i);
+  if (webServer.args() > 0) {
+    for (int i = 0; i < webServer.args(); i++) {
+      argname = webServer.argName(i);
+      argv = webServer.arg(i);
 #ifdef DEBUG
-    Serial.print("argname:");
-    Serial.print(argname);
-    Serial.print(" = ");
-    Serial.println(argv);
+      Serial.print("argname:");
+      Serial.print(argname);
+      Serial.print(" = ");
+      Serial.println(argv);
 #endif
-    if (argname == "enable") {
-       enable = argv ==  "true" ? 1 : 0;
-    } else if (argname == "ft1_h") {
-       ft1_h  = argv.toInt();
-    } else if (argname == "ft1_m") {
-       ft1_m  = argv.toInt();
-    } else if (argname == "ft1_r") {
-       ft1_r  = argv.toInt();
-    } else if (argname == "ft2_h") {
-       ft2_h  = argv.toInt();
-    } else if (argname == "ft2_m") {
-       ft2_m  = argv.toInt();
-    } else if (argname == "ft2_r") {
-       ft2_r  = argv.toInt();
-    } else if (argname == "ft3_h") {
-       ft3_h  = argv.toInt();
-    } else if (argname == "ft3_m") {
-       ft3_m  = argv.toInt();
-    } else if (argname == "ft3_r") {
-       ft3_r  = argv.toInt();
+      if (argname == "enable") {
+        enable = (argv ==  "true" ? 1 : 0);
+      } else if (argname == "ft1_h") {
+        ft1_h  = argv.toInt();
+      } else if (argname == "ft1_m") {
+        ft1_m  = argv.toInt();
+      } else if (argname == "ft1_r") {
+        ft1_r  = argv.toInt();
+      } else if (argname == "ft2_h") {
+        ft2_h  = argv.toInt();
+      } else if (argname == "ft2_m") {
+        ft2_m  = argv.toInt();
+      } else if (argname == "ft2_r") {
+        ft2_r  = argv.toInt();
+      } else if (argname == "ft3_h") {
+        ft3_h  = argv.toInt();
+      } else if (argname == "ft3_m") {
+        ft3_m  = argv.toInt();
+      } else if (argname == "ft3_r") {
+        ft3_r  = argv.toInt();
+      }
     }
-  }
-  feeder.schedule(enable);
-  EEPROM.write(EEPROM_SCHEDULE_ADDR, char(feeder.schedule()));
-  for (int i = 0; i < 3; i++) {
-    if (i == 0 && ft1_h >= 0) {
-      feeder.schedule(0,ft1_h,ft1_m,ft1_r);
-    } else if (i == 1 && ft2_h >= 0) {  
-      feeder.schedule(1,ft2_h,ft2_m,ft2_r);
-    } else if (i == 2 && ft3_h >= 0) {  
-      feeder.schedule(2,ft3_h,ft3_m,ft3_r);
+    feeder.enable(enable);
+    EEPROM.write(EEPROM_SCHEDULE_ADDR, char(feeder.enable()));
+    for (int i = 0; i < 3; i++) {
+      if (i == 0 && ft1_h >= 0) {
+        feeder.schedule(0,ft1_h,ft1_m,ft1_r);
+      } else if (i == 1 && ft2_h >= 0) {  
+        feeder.schedule(1,ft2_h,ft2_m,ft2_r);
+      } else if (i == 2 && ft3_h >= 0) {  
+        feeder.schedule(2,ft3_h,ft3_m,ft3_r);
+      }
+      EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+1, char(feeder.feedtime_h(i)));
+      EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+2, char(feeder.feedtime_m(i)));
+      EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+3, char(feeder.feedtime_r(i)));
     }
-    EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+1, char(feeder.feedtime_h(i)));
-    EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+2, char(feeder.feedtime_m(i)));
-    EEPROM.write(EEPROM_SCHEDULE_ADDR + i*3+3, char(feeder.feedtime_r(i)));
+    EEPROM.commit();
   }
-  EEPROM.commit();
 
-  json["enable_schedule"] = feeder.schedule();
+  json["enable"] = boolstr[feeder.enable()];
   json["ft1_h"] = feeder.feedtime_h(0);
   json["ft1_m"] = feeder.feedtime_m(0);
   json["ft1_r"] = feeder.feedtime_r(0);
@@ -606,16 +610,6 @@ void handleStatus() {
   JsonObject& json = jsonBuffer.createObject();
   json["fed"] = feeder.fed();
   json["rotated"] = feeder.rotated();
-  json["enable_schedule"] = feeder.schedule();
-  json["ft1_h"] = feeder.feedtime_h(0);
-  json["ft1_m"] = feeder.feedtime_m(0);
-  json["ft1_r"] = feeder.feedtime_r(0);
-  json["ft2_h"] = feeder.feedtime_h(1);
-  json["ft2_m"] = feeder.feedtime_m(1);
-  json["ft2_r"] = feeder.feedtime_r(1);
-  json["ft3_h"] = feeder.feedtime_h(2);
-  json["ft3_m"] = feeder.feedtime_m(2);
-  json["ft3_r"] = feeder.feedtime_r(2);
   json["timestamp"] = timestamp();  
   json.printTo(message);
   webServer.send(200, "application/json", message);

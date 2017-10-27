@@ -17,8 +17,8 @@ class drumFeeder : public drv8830_i2c {
     void incRotated(int v);
     void incFed(int v);
 
-    int  schedule();
-    void schedule(int v);
+    int  enable();
+    void enable(int v);
     void schedule(int v, int ft_h, int ft_m, int ft_r);
     void control(int hh, int mm);
 
